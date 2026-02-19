@@ -1,0 +1,1 @@
+{"name": "merci-petanque-platform", "private": true, "workspaces": ["apps/*", "packages/*"]}

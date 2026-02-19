@@ -1,0 +1,219 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// USER & ROLES (RBAC)
+// -----------------------------------------------------------------------------
+
+enum Role {
+  PLAYER
+  COACH
+  ORGANIZER
+  ADMIN
+}
+
+enum EntitlementStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  passwordHash    String
+  fullName        String?
+  role            Role     @default(PLAYER)
+
+  // Profile
+  avatarUrl       String?
+  bio             String?
+  country         String?
+
+  // Entitlements
+  isPremium       Boolean  @default(false)
+  isVerified      Boolean  @default(false)
+  coachCredits    Int      @default(0)
+
+  // Relations
+  entitlements    Entitlement[]
+  assessments     Assessment[]
+  missionAssignments MissionAssignment[]
+  matchesAsPlayer1 Match[] @relation("Player1")
+  matchesAsPlayer2 Match[] @relation("Player2")
+  trustScoreHistory TrustScoreLog[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Entitlement {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id])
+  type      String            // "PREMIUM_SUBSCRIPTION", "OBJECTIVE_MODE", "COACH_SESSION"
+  status    EntitlementStatus @default(ACTIVE)
+  validUntil DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// -----------------------------------------------------------------------------
+// MERCI ENGINE (Domains & Assessments)
+// -----------------------------------------------------------------------------
+
+enum MerciDomain {
+  MOTRICITY
+  EMOTIONS
+  RELATIONSHIPS
+  FIVE_SENSES
+  INTELLIGENCE
+}
+
+// Items are constants in code, but stored here for scoring reference if needed.
+// M1..M6, E1..E6, etc.
+
+enum AssessmentType {
+  SELF
+  COACH
+  CHECKPOINT
+  TOURNAMENT_DERIVED
+}
+
+model Assessment {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id])
+  type        AssessmentType @default(SELF)
+  date        DateTime       @default(now())
+
+  // Scores
+  totalScore  Int            // 30-150
+
+  scores      AssessmentItemScore[]
+
+  notes       String?
+  coachId     String?        // If validated by coach
+}
+
+model AssessmentItemScore {
+  id           String      @id @default(cuid())
+  assessmentId String
+  assessment   Assessment  @relation(fields: [assessmentId], references: [id])
+
+  domain       MerciDomain
+  itemCode     String      // e.g. "M1", "E3"
+  value        Int         // 1-5
+}
+
+// -----------------------------------------------------------------------------
+// MISSIONS ENGINE (Evolutionary)
+// -----------------------------------------------------------------------------
+
+enum MissionEvidencePolicy {
+  NONE
+  OPTIONAL_VIDEO
+  REQUIRED_VIDEO
+  RANDOM_AUDIT
+  COSIGN
+}
+
+model MissionTemplate {
+  id               String                @id @default(cuid())
+  code             String                @unique // e.g. "M1-BASIC-STANCE"
+  domain           MerciDomain
+  targetItemCode   String?               // e.g. "M1"
+
+  title            String
+  shortExplainer   String
+  instructionSteps String[]              // Array of strings
+  checklist        String[]              // Array of strings
+
+  evidencePolicy   MissionEvidencePolicy @default(NONE)
+  estimatedMinutes Int                   @default(15)
+  difficultyBase   Int                   @default(1) // 1-10
+
+  assignments      MissionAssignment[]
+}
+
+enum MissionStatus {
+  ASSIGNED
+  COMPLETED
+  EXPIRED
+  SKIPPED
+}
+
+model MissionAssignment {
+  id                String        @id @default(cuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id])
+  templateId        String
+  template          MissionTemplate @relation(fields: [templateId], references: [id])
+
+  status            MissionStatus @default(ASSIGNED)
+  scheduledFor      DateTime      @default(now())
+  dueAt             DateTime?
+
+  attempts          Attempt[]
+
+  completedAt       DateTime?
+}
+
+model Attempt {
+  id              String   @id @default(cuid())
+  assignmentId    String
+  assignment      MissionAssignment @relation(fields: [assignmentId], references: [id])
+
+  evidenceUrl     String?
+  notes           String?
+  rpe             Int?     // Rate of Perceived Exertion (1-10)
+  checklistDone   Boolean[] // Matches template checklist length
+
+  isVerified      Boolean  @default(false)
+  verifiedBy      String?  // Coach ID or System
+
+  createdAt       DateTime @default(now())
+}
+
+// -----------------------------------------------------------------------------
+// GAMIFICATION & TRUST
+// -----------------------------------------------------------------------------
+
+model TrustScoreLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  score     Int      // 0-100
+  reason    String?
+  date      DateTime @default(now())
+}
+
+model Match {
+  id        String   @id @default(cuid())
+  date      DateTime @default(now())
+
+  player1Id String
+  player1   User     @relation("Player1", fields: [player1Id], references: [id])
+  score1    Int
+
+  player2Id String?
+  player2   User?    @relation("Player2", fields: [player2Id], references: [id])
+  score2    Int
+
+  notes     String?
+}
+
+model Tournament {
+  id        String   @id @default(cuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime?
+  organizerId String?
+}
