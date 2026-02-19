@@ -1,4 +1,4 @@
-# MERCI Global Petanque Platform
+# perform. Global Petanque Platform
 
 This is a Monorepo for the **Global Petanque Platform**, designed with a Next.js (Web/PWA) frontend and a NestJS (API) backend, sharing a Prisma Database package.
 
@@ -7,7 +7,7 @@ This is a Monorepo for the **Global Petanque Platform**, designed with a Next.js
 -   **Frontend (`apps/web`):** Next.js (React), Tailwind CSS, PWA enabled.
 -   **Backend (`apps/api`):** NestJS, Prisma Client, BullMQ (Redis).
 -   **Database (`packages/database`):** Prisma ORM (PostgreSQL).
--   **Domain (`packages/domain`):** Core MERCI logic (TypeScript).
+-   **Domain (`packages/domain`):** Core Domain Logic (Internal: MERCI) (TypeScript).
 
 ## Prerequisites
 

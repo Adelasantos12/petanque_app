@@ -12,8 +12,8 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   const config = new DocumentBuilder()
-    .setTitle('MERCI Petanque API')
-    .setDescription('Core API for the Global Petanque Platform')
+    .setTitle('Perform API')
+    .setDescription('Core API for the Perform - Global Petanque Platform')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
