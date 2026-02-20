@@ -193,6 +193,8 @@ model TrustScoreLog {
   score     Int      // 0-100
   reason    String?
   date      DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Match {
